@@ -518,11 +518,20 @@
   }
 
   function loadManualRows() {
-    const rows = [...document.getElementById('manualList').children].map(div => {
+    const parsed = [];
+    for (const div of document.getElementById('manualList').children) {
       const inputs = div.querySelectorAll('input');
-      return [inputs[0].value.trim(), inputs[1].value, inputs[2].value];
-    });
-    const parsed = parseRows(rows);
+      const name = inputs[0].value.trim();
+      const msrpVal = inputs[1].value.trim();
+      const purchaseVal = inputs[2].value.trim();
+      if (!name || !purchaseVal) continue;
+      parsed.push({
+        jpName: name, zhName: '',
+        msrp: msrpVal ? parseFloat(msrpVal) : null,
+        purchase: parseFloat(purchaseVal),
+        customPrice: null
+      });
+    }
     if (!parsed.length) { alert('請至少填寫一筆品名和批價'); return; }
     const startIdx = items.length;
     items = [...items, ...parsed];
@@ -594,7 +603,8 @@
         .map(c => parseFloat(String(c).replace(/,/g, '')))
         .filter(n => !isNaN(n) && n > 0);
       if (!nums.length || !name) continue;
-      parsed.push({ jpName: name, zhName: '', msrp: nums[0], purchase: nums[1] ?? nums[0], customPrice: null });
+      const hasMsrp = nums.length >= 2;
+      parsed.push({ jpName: name, zhName: '', msrp: hasMsrp ? nums[0] : null, purchase: hasMsrp ? nums[1] : nums[0], customPrice: null });
     }
     return parsed;
   }
@@ -708,17 +718,17 @@
     let price;
 
     if (mode === 'rate') {
-      // 模式一：匯率定價 → 售價由匯率決定
-      price = item.customPrice != null ? item.customPrice : roundN(item.msrp * s.pr, s.rt);
+      // 模式一：匯率定價；無零售價時改用毛利率定價
+      price = item.customPrice != null ? item.customPrice
+            : (item.msrp != null ? roundN(item.msrp * s.pr, s.rt)
+                                 : roundN(cost / (1 - s.tm / 100), s.rt));
     } else {
-      // 模式二：毛利率定價 → 售價由目標毛利率反推
       price = item.customPrice != null ? item.customPrice : roundN(cost / (1 - s.tm / 100), s.rt);
     }
 
-    const margin     = price > 0 ? (price - cost) / price * 100 : 0;
-    // 參考值（另一個模式的反推結果）
-    const refMargin  = price > 0 ? margin : 0;                      // mode=rate 時顯示毛利率
-    const refRate    = item.msrp > 0 ? price / item.msrp : 0;       // mode=margin 時顯示隱含匯率
+    const margin    = price > 0 ? (price - cost) / price * 100 : 0;
+    const refMargin = price > 0 ? margin : 0;
+    const refRate   = (item.msrp != null && item.msrp > 0) ? price / item.msrp : 0;
 
     return { cost, price, margin, refMargin, refRate, profit: price - cost };
   }
@@ -762,8 +772,8 @@
             placeholder="點此輸入中文品名"
             onchange="items[${i}].zhName=this.value">
         </td>
-        <td class="right" style="font-variant-numeric:tabular-nums;color:var(--sub)">
-          ${fmt(item.msrp)}
+        <td class="right msrp-col" style="font-variant-numeric:tabular-nums;color:var(--sub)">
+          ${item.msrp != null ? fmt(item.msrp) : '<span style="color:var(--border)">—</span>'}
         </td>
         <td class="right" style="font-variant-numeric:tabular-nums;font-weight:600">
           ${fmt(item.purchase)}
@@ -786,6 +796,13 @@
     document.getElementById('emptyState').style.display = hasData ? 'none' : 'flex';
     document.getElementById('mainTable').style.display = hasData ? 'table' : 'none';
     document.getElementById('exportBtn').style.display = hasData ? 'inline-block' : 'none';
+
+    // 若所有品項都沒有零售價，隱藏整欄
+    const anyMsrp = items.some(it => it.msrp != null);
+    const msrpDisplay = anyMsrp ? '' : 'none';
+    document.getElementById('colMsrp').style.display = msrpDisplay;
+    document.querySelectorAll('.msrp-col').forEach(el => el.style.display = msrpDisplay);
+
     updateStats(s);
   }
 
