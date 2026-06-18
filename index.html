@@ -36,12 +36,12 @@
     .topbar {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 0 20px;
+      padding: 8px 20px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
+      gap: 8px 10px;
       flex-shrink: 0;
-      height: 54px;
     }
     .logo {
       display: flex; align-items: center; gap: 8px;
@@ -361,20 +361,19 @@
     </select>
   </div>
 
-  <div class="spacer"></div>
-
-  <!-- IP 品牌前綴 -->
-  <div class="s-pill ip-pill">
-    <label>IP 品牌</label>
-    <input type="text" id="ipBrand" placeholder="MOOMIN" style="width:80px;text-align:left;font-weight:600"
-      oninput="onIpInput()">
-    <button class="ip-apply-btn" id="ipApplyBtn" onclick="applyIpToAll()">套用全部</button>
-  </div>
-
-  <div class="topbar-right">
-    <button class="btn btn-ghost" onclick="openPaste()">＋ 貼上商品</button>
-    <button class="btn btn-ghost" onclick="clearAll()">清除</button>
-    <button class="btn btn-dark" id="exportBtn" style="display:none" onclick="exportCSV()">↓ 匯出 CSV</button>
+  <!-- 第二行：IP 品牌 + 操作按鈕 -->
+  <div style="width:100%;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-top:2px">
+    <div class="s-pill ip-pill">
+      <label>IP 品牌</label>
+      <input type="text" id="ipBrand" placeholder="MOOMIN" style="width:80px;text-align:left;font-weight:600"
+        oninput="onIpInput()">
+      <button class="ip-apply-btn" id="ipApplyBtn" onclick="applyIpToAll()">套用全部</button>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost" onclick="openPaste()">＋ 貼上商品</button>
+      <button class="btn btn-ghost" onclick="clearAll()">清除</button>
+      <button class="btn btn-dark" id="exportBtn" style="display:none" onclick="exportCSV()">↓ 匯出 CSV</button>
+    </div>
   </div>
 </div>
 
