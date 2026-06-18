@@ -412,16 +412,23 @@
 
     <!-- Tab 切換 -->
     <div style="display:flex;gap:4px;margin-bottom:12px;background:var(--bg);border-radius:8px;padding:3px;border:1px solid var(--border)">
-      <button id="tabPasteBtn" class="mode-btn active" style="flex:1" onclick="switchTab('paste')">貼上文字</button>
-      <button id="tabFileBtn"  class="mode-btn"        style="flex:1" onclick="switchTab('file')">上傳檔案</button>
+      <button id="tabManualBtn" class="mode-btn active" style="flex:1" onclick="switchTab('manual')">逐筆輸入</button>
+      <button id="tabPasteBtn"  class="mode-btn"        style="flex:1" onclick="switchTab('paste')">貼上文字</button>
+      <button id="tabFileBtn"   class="mode-btn"        style="flex:1" onclick="switchTab('file')">上傳檔案</button>
+    </div>
+
+    <!-- 逐筆輸入模式 -->
+    <div id="tabManual">
+      <div id="manualList" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;margin-bottom:8px"></div>
+      <button onclick="addManualRow()" style="width:100%;padding:7px;border:1.5px dashed var(--border);border-radius:7px;background:none;color:var(--sub);cursor:pointer;font-size:0.8rem;font-family:inherit">＋ 新增一筆</button>
     </div>
 
     <!-- 貼上模式 -->
-    <div id="tabPaste">
+    <div id="tabPaste" style="display:none">
       <div class="overlay-hint">
         欄位順序：<strong>品名　零售價　批價</strong><br>
-        從試算表複製貼上，或直接手動輸入<br>
-        <span style="opacity:0.7">用 Tab 或兩個以上空格分隔；有表頭列自動略過</span>
+        從試算表複製貼上<br>
+        <span style="opacity:0.7">Tab 分隔；有表頭列自動略過</span>
       </div>
       <textarea class="paste-ta" id="pasteArea"
         placeholder="アクリルスタンド&#9;1800&#9;990&#10;ポーチ&#9;580&#9;319"></textarea>
@@ -475,8 +482,8 @@
     pendingRows = [];
     document.getElementById('fileStatus').textContent = '';
     document.getElementById('overlay').classList.add('open');
-    switchTab('paste');
-    setTimeout(() => document.getElementById('pasteArea').focus(), 80);
+    switchTab('manual');
+    if (!document.getElementById('manualList').children.length) addManualRow();
   }
   function closeOverlay() {
     document.getElementById('overlay').classList.remove('open');
@@ -485,10 +492,47 @@
     if (e.target === document.getElementById('overlay')) closeOverlay();
   }
   function switchTab(t) {
-    document.getElementById('tabPaste').style.display = t === 'paste' ? '' : 'none';
-    document.getElementById('tabFile').style.display  = t === 'file'  ? '' : 'none';
-    document.getElementById('tabPasteBtn').classList.toggle('active', t === 'paste');
-    document.getElementById('tabFileBtn').classList.toggle('active',  t === 'file');
+    document.getElementById('tabManual').style.display = t === 'manual' ? '' : 'none';
+    document.getElementById('tabPaste').style.display  = t === 'paste'  ? '' : 'none';
+    document.getElementById('tabFile').style.display   = t === 'file'   ? '' : 'none';
+    document.getElementById('tabManualBtn').classList.toggle('active', t === 'manual');
+    document.getElementById('tabPasteBtn').classList.toggle('active',  t === 'paste');
+    document.getElementById('tabFileBtn').classList.toggle('active',   t === 'file');
+    if (t === 'paste') setTimeout(() => document.getElementById('pasteArea').focus(), 80);
+  }
+
+  /* ── Manual entry ── */
+  let manualRowCount = 0;
+  function addManualRow() {
+    const id = manualRowCount++;
+    const cur = getCurrency();
+    const div = document.createElement('div');
+    div.id = `mrow-${id}`;
+    div.style.cssText = 'display:grid;grid-template-columns:1fr 90px 90px 28px;gap:5px;align-items:center';
+    div.innerHTML = `
+      <input placeholder="品名" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit;width:100%;box-sizing:border-box">
+      <input placeholder="零售價" type="number" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit;width:100%;box-sizing:border-box;text-align:right">
+      <input placeholder="批價" type="number" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit;width:100%;box-sizing:border-box;text-align:right">
+      <button onclick="document.getElementById('mrow-${id}').remove()" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0">×</button>`;
+    document.getElementById('manualList').appendChild(div);
+    div.querySelector('input').focus();
+  }
+
+  function loadManualRows() {
+    const rows = [...document.getElementById('manualList').children].map(div => {
+      const inputs = div.querySelectorAll('input');
+      return [inputs[0].value.trim(), inputs[1].value, inputs[2].value];
+    });
+    const parsed = parseRows(rows);
+    if (!parsed.length) { alert('請至少填寫一筆品名和批價'); return; }
+    const startIdx = items.length;
+    items = [...items, ...parsed];
+    // 清空列表備下次使用
+    document.getElementById('manualList').innerHTML = '';
+    manualRowCount = 0;
+    closeOverlay();
+    render();
+    autoTranslate(startIdx);
   }
 
   /* ── File upload ── */
@@ -525,8 +569,9 @@
 
   /* ── Unified load ── */
   function doLoad() {
-    const isFile = document.getElementById('tabFile').style.display !== 'none';
-    if (isFile) {
+    if (document.getElementById('tabManual').style.display !== 'none') {
+      loadManualRows();
+    } else if (document.getElementById('tabFile').style.display !== 'none') {
       if (!pendingRows.length) { alert('請先選擇檔案'); return; }
       const startIdx = items.length;
       items = [...items, ...pendingRows];
