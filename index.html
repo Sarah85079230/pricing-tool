@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>定價試算</title>
+  <style>
+    :root {
+      --bg:       #f4f1ed;
+      --surface:  #ffffff;
+      --border:   #e2dcd5;
+      --border-lt:#ece8e2;
+      --text:     #28231e;
+      --sub:      #7d7068;
+      --muted:    #b0a89e;
+      --accent:   #6e8f7f;
+      --accent-bg:#edf3f0;
+      --accent-dk:#4a6b5c;
+      --good: #4a8c5c; --good-bg: #eaf5ee;
+      --mid:  #a07030; --mid-bg:  #fdf4e7;
+      --low:  #a04040; --low-bg:  #fdeaea;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Hiragino Sans", "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      height: 54px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 8px;
+      margin-right: 16px; flex-shrink: 0;
+    }
+    .logo-mark {
+      width: 28px; height: 28px;
+      background: var(--accent); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; color: white;
+    }
+    .logo-text { font-size: 0.88rem; font-weight: 600; letter-spacing: 0.04em; }
+
+    /* settings pill */
+    .s-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      padding: 5px 11px;
+      transition: border-color 0.15s;
+    }
+    .s-pill:focus-within { border-color: var(--accent); }
+    .s-pill label { font-size: 0.68rem; color: var(--sub); white-space: nowrap; font-weight: 500; }
+    .s-pill input, .s-pill select {
+      border: none; background: transparent;
+      font-size: 0.86rem; font-weight: 700; color: var(--text);
+      outline: none; width: 58px; text-align: right; font-family: inherit;
+    }
+    .s-pill select { width: 72px; cursor: pointer; }
+    .s-pill .unit { font-size: 0.72rem; color: var(--muted); }
+
+    /* mode toggle — 主要操作點，用暖橙色突顯 */
+    .mode-toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fdf6ef;
+      border: 1.5px solid #e8c49a;
+      border-radius: 10px;
+      padding: 4px 10px 4px 8px;
+    }
+    .mode-toggle-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #b07030;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    .mode-toggle {
+      display: flex;
+      background: #f5e8d8;
+      border-radius: 7px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .mode-btn {
+      padding: 3px 10px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #a07040;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .mode-btn.active {
+      background: #c87941;
+      color: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    .spacer { flex: 1; }
+
+    /* IP 品牌 */
+    .ip-pill { border-color: #c8a8d8; background: #faf5fd; }
+    .ip-pill label { color: #8855aa; }
+    .ip-pill input { color: #6633aa; }
+    .ip-apply-btn {
+      font-size: 0.62rem; font-weight: 700;
+      background: #8855aa; color: white;
+      border: none; border-radius: 5px;
+      padding: 2px 7px; cursor: pointer;
+      font-family: inherit; white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .ip-apply-btn:hover { opacity: 0.82; }
+
+    .topbar-right { display: flex; gap: 8px; align-items: center; }
+
+    /* buttons */
+    .btn {
+      padding: 6px 14px; border-radius: 7px;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      border: none; letter-spacing: 0.02em; white-space: nowrap;
+      transition: opacity 0.15s, transform 0.1s; font-family: inherit;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-accent:hover { opacity: 0.85; }
+    .btn-ghost { background: transparent; color: var(--sub); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent-dk); }
+    .btn-dark { background: var(--text); color: white; }
+    .btn-dark:hover { opacity: 0.8; }
+
+
+    /* ── Paste overlay ── */
+    .overlay-bg {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(40,35,30,0.35);
+      z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .overlay-bg.open { display: flex; }
+    .overlay-box {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 22px 24px;
+      width: 420px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    }
+    .overlay-box h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+    .overlay-hint {
+      font-size: 0.73rem; color: var(--sub);
+      background: var(--accent-bg); border-radius: 8px;
+      padding: 8px 10px; margin-bottom: 10px; line-height: 1.7;
+    }
+    .overlay-hint strong { color: var(--accent-dk); }
+    .paste-ta {
+      width: 100%; min-height: 130px; max-height: 260px;
+      padding: 10px 12px;
+      border: 1.5px dashed var(--border); border-radius: 8px;
+      font-size: 0.78rem; font-family: monospace;
+      color: var(--text); background: var(--bg); resize: vertical;
+      outline: none; line-height: 1.7; margin-bottom: 10px;
+    }
+    .paste-ta:focus { border-color: var(--accent); border-style: solid; }
+    .paste-ta::placeholder { color: var(--muted); }
+    .overlay-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── Table area ── */
+    .table-wrap {
+      flex: 1; overflow: auto;
+    }
+    table {
+      width: 100%; border-collapse: collapse; min-width: 820px;
+    }
+    thead { position: sticky; top: 0; z-index: 10; }
+    thead th {
+      background: var(--bg);
+      padding: 5px 10px;
+      font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--muted); border-bottom: 1.5px solid var(--border);
+      white-space: nowrap;
+    }
+    th.right, td.right { text-align: right; }
+    th.center, td.center { text-align: center; }
+
+    /* column group tint */
+    .col-calc { background: #f9fbfa; }
+    thead .col-calc { background: #f0f5f2 !important; color: var(--accent-dk) !important; }
+
+    tbody tr { border-bottom: 1px solid var(--border-lt); transition: background 0.1s; }
+    tbody tr:hover { background: #f9f7f4; }
+    tbody tr:last-child { border-bottom: none; }
+    td { padding: 5px 10px; vertical-align: middle; font-size: 0.74rem; }
+
+    .row-num { font-size: 0.6rem; color: var(--muted); width: 28px; text-align: center; }
+
+    /* cell inputs */
+    .ci {
+      border: none; background: transparent;
+      font-size: 0.74rem; font-family: inherit; color: var(--text);
+      width: 100%; outline: none; padding: 1px 4px; border-radius: 4px;
+      transition: background 0.12s;
+    }
+    .ci:hover  { background: var(--border-lt); }
+    .ci:focus  { background: var(--accent-bg); }
+    .ci.right  { text-align: right; }
+
+    .price-ci {
+      width: 70px; text-align: right;
+      border: 1.5px solid transparent; border-radius: 5px;
+      padding: 2px 4px; font-size: 0.8rem; font-weight: 700;
+      color: var(--text); background: transparent;
+      font-family: inherit; outline: none;
+      transition: border-color 0.15s, background 0.15s;
+      font-variant-numeric: tabular-nums;
+    }
+    .price-ci:hover { border-color: var(--border); background: white; }
+    .price-ci:focus { border-color: var(--accent); background: white; }
+
+    .tr-btn {
+      font-size: 0.6rem; color: var(--accent); cursor: pointer;
+      opacity: 0.55; background: none; border: none; padding: 0;
+      display: block; margin-top: 1px; font-family: inherit;
+    }
+    .tr-btn:hover { opacity: 1; }
+
+    /* file upload area */
+    .upload-area {
+      border: 1.5px dashed var(--border); border-radius: 8px;
+      padding: 14px; text-align: center; cursor: pointer;
+      background: var(--bg); transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 10px;
+    }
+    .upload-area:hover, .upload-area.drag { border-color: var(--accent); background: var(--accent-bg); }
+    .upload-area p { font-size: 0.75rem; color: var(--sub); line-height: 1.7; }
+    .upload-area .icon { font-size: 1.4rem; margin-bottom: 4px; }
+    #fileInput { display: none; }
+
+    /* margin pill */
+    .mpill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+    }
+    .mpill-good { background: var(--good-bg); color: var(--good); }
+    .mpill-mid  { background: var(--mid-bg);  color: var(--mid); }
+    .mpill-low  { background: var(--low-bg);  color: var(--low); }
+    .mbar {
+      display: inline-block; width: 30px; height: 4px;
+      background: var(--border-lt); border-radius: 3px;
+      position: relative; overflow: hidden; vertical-align: middle;
+    }
+    .mbar-fill { position: absolute; left:0;top:0;bottom:0; border-radius:3px; }
+
+    .del-btn {
+      width: 22px; height: 22px; border-radius: 6px;
+      border: none; background: transparent; color: var(--muted);
+      cursor: pointer; font-size: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.12s;
+    }
+    .del-btn:hover { background: var(--low-bg); color: var(--low); }
+
+    /* empty */
+    .empty-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%; color: var(--muted); gap: 10px; padding: 40px;
+    }
+    .empty-wrap .icon { font-size: 2rem; opacity: 0.35; }
+    .empty-wrap p { font-size: 0.82rem; text-align: center; line-height: 1.9; }
+    .empty-wrap .open-btn {
+      margin-top: 6px; padding: 8px 20px;
+      background: var(--accent); color: white;
+      border: none; border-radius: 8px; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .empty-wrap .open-btn:hover { opacity: 0.85; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">🏷</div>
+    <span class="logo-text">定價試算</span>
+  </div>
+
+  <!-- 固定設定 -->
+  <div class="s-pill">
+    <label>目前匯率</label>
+    <input type="number" id="currentRate" value="0.22" step="0.001" oninput="recalcAll()">
+  </div>
+  <div class="s-pill">
+    <label>進口費</label>
+    <input type="number" id="importFee" value="25" step="1" min="0" oninput="recalcAll()">
+    <span class="unit">%</span>
+  </div>
+
+  <!-- 模式切換 -->
+  <div class="mode-toggle-wrap">
+    <span class="mode-toggle-label">定價方式 ▾</span>
+    <div class="mode-toggle">
+      <button id="modeRateBtn" class="mode-btn active" onclick="setMode('rate')">匯率定價</button>
+      <button id="modeMarginBtn" class="mode-btn" onclick="setMode('margin')">毛利率定價</button>
+    </div>
+  </div>
+
+  <!-- 依模式顯示 -->
+  <div class="s-pill" id="rateInput">
+    <label>定價匯率</label>
+    <input type="number" id="pricingRate" value="0.32" step="0.01" oninput="recalcAll()">
+  </div>
+  <div class="s-pill" id="marginInput" style="display:none">
+    <label>目標毛利率</label>
+    <input type="number" id="targetMargin" value="50" step="1" min="1" max="99" oninput="recalcAll()">
+    <span class="unit">%</span>
+  </div>
+
+  <div class="s-pill">
+    <label>取整</label>
+    <select id="roundTo" onchange="recalcAll()">
+      <option value="10">整十元</option>
+      <option value="50">整五十元</option>
+      <option value="100">整百元</option>
+      <option value="1">不取整</option>
+    </select>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- IP 品牌前綴 -->
+  <div class="s-pill ip-pill">
+    <label>IP 品牌</label>
+    <input type="text" id="ipBrand" placeholder="MOOMIN" style="width:80px;text-align:left;font-weight:600"
+      oninput="onIpInput()">
+    <button class="ip-apply-btn" id="ipApplyBtn" onclick="applyIpToAll()" style="display:none">套用全部</button>
+  </div>
+
+  <div class="topbar-right">
+    <button class="btn btn-ghost" onclick="openPaste()">＋ 貼上商品</button>
+    <button class="btn btn-ghost" onclick="clearAll()">清除</button>
+    <button class="btn btn-dark" id="exportBtn" style="display:none" onclick="exportCSV()">↓ 匯出 CSV</button>
+  </div>
+</div>
+
+
+<!-- ── Table ── -->
+<div class="table-wrap" id="tableWrap">
+  <div class="empty-wrap" id="emptyState">
+    <div class="icon">📋</div>
+    <p>從試算表複製品名、日本零售價、批價<br>點下方按鈕貼入，即可看到試算結果</p>
+    <button class="open-btn" onclick="openPaste()">＋ 貼上商品資料</button>
+  </div>
+
+  <table id="mainTable" style="display:none">
+    <thead>
+      <tr>
+        <th style="width:36px"></th>
+        <th>品名（日文）</th>
+        <th>中文品名</th>
+        <th class="right">日本零售價</th>
+        <th class="right">批價（JPY）</th>
+        <th class="right col-calc">成本（TWD）</th>
+        <th class="right col-calc">建議售價（TWD）</th>
+        <th class="right col-calc" id="refColHead" style="color:var(--muted);font-weight:500">毛利率（參考）</th>
+        <th style="width:32px"></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- ── Paste overlay ── -->
+<div class="overlay-bg" id="overlay" onclick="onOverlayBg(event)">
+  <div class="overlay-box">
+    <h3>載入商品資料</h3>
+
+    <!-- Tab 切換 -->
+    <div style="display:flex;gap:4px;margin-bottom:12px;background:var(--bg);border-radius:8px;padding:3px;border:1px solid var(--border)">
+      <button id="tabPasteBtn" class="mode-btn active" style="flex:1" onclick="switchTab('paste')">貼上文字</button>
+      <button id="tabFileBtn"  class="mode-btn"        style="flex:1" onclick="switchTab('file')">上傳檔案</button>
+    </div>
+
+    <!-- 貼上模式 -->
+    <div id="tabPaste">
+      <div class="overlay-hint">
+        欄位順序：<strong>品名（日文）　日本零售價　批價</strong><br>
+        每列一筆，從 Excel / Google 試算表直接複製貼上即可<br>
+        <span style="opacity:0.7">有表頭列也沒關係，自動略過</span>
+      </div>
+      <textarea class="paste-ta" id="pasteArea"
+        placeholder="アクリルスタンド&#9;1800&#9;990&#10;ポーチ&#9;580&#9;319"></textarea>
+    </div>
+
+    <!-- 上傳檔案模式 -->
+    <div id="tabFile" style="display:none">
+      <div class="overlay-hint">
+        支援 <strong>.xlsx / .xls / .csv</strong> 檔案<br>
+        欄位順序：<strong>品名（日文）　日本零售價　批價</strong>（第一列可為表頭）
+      </div>
+      <div class="upload-area" id="uploadArea"
+        onclick="document.getElementById('fileInput').click()"
+        ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <div class="icon">📂</div>
+        <p>點此選擇檔案，或將檔案拖曳到這裡<br>
+          <span style="color:var(--muted);font-size:0.68rem">.xlsx / .xls / .csv</span>
+        </p>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="onFileChange(event)">
+      <div id="fileStatus" style="font-size:0.75rem;color:var(--sub);min-height:20px;text-align:center"></div>
+    </div>
+
+    <div class="overlay-actions" style="margin-top:10px">
+      <button class="btn btn-ghost" onclick="closeOverlay()">取消</button>
+      <button class="btn btn-accent" id="loadBtn" onclick="doLoad()">載入 →</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script>
+  let items = [];
+  let mode = 'rate'; // 'rate' | 'margin'
+  let pendingRows = []; // 從檔案解析出來、待載入的資料
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('modeRateBtn').classList.toggle('active', m === 'rate');
+    document.getElementById('modeMarginBtn').classList.toggle('active', m === 'margin');
+    document.getElementById('rateInput').style.display   = m === 'rate'   ? '' : 'none';
+    document.getElementById('marginInput').style.display = m === 'margin' ? '' : 'none';
+    // 更新參考欄標題
+    document.getElementById('refColHead').textContent =
+      m === 'rate' ? '毛利率（參考）' : '隱含匯率（參考）';
+    if (items.length) render();
+  }
+
+  /* ── Overlay ── */
+  function openPaste() {
+    pendingRows = [];
+    document.getElementById('fileStatus').textContent = '';
+    document.getElementById('overlay').classList.add('open');
+    switchTab('paste');
+    setTimeout(() => document.getElementById('pasteArea').focus(), 80);
+  }
+  function closeOverlay() {
+    document.getElementById('overlay').classList.remove('open');
+  }
+  function onOverlayBg(e) {
+    if (e.target === document.getElementById('overlay')) closeOverlay();
+  }
+  function switchTab(t) {
+    document.getElementById('tabPaste').style.display = t === 'paste' ? '' : 'none';
+    document.getElementById('tabFile').style.display  = t === 'file'  ? '' : 'none';
+    document.getElementById('tabPasteBtn').classList.toggle('active', t === 'paste');
+    document.getElementById('tabFileBtn').classList.toggle('active',  t === 'file');
+  }
+
+  /* ── File upload ── */
+  function onDragOver(e)  { e.preventDefault(); document.getElementById('uploadArea').classList.add('drag'); }
+  function onDragLeave()  { document.getElementById('uploadArea').classList.remove('drag'); }
+  function onDrop(e)      { e.preventDefault(); onDragLeave(); handleFile(e.dataTransfer.files[0]); }
+  function onFileChange(e){ handleFile(e.target.files[0]); }
+
+  function handleFile(file) {
+    if (!file) return;
+    const status = document.getElementById('fileStatus');
+    status.textContent = '讀取中…';
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        pendingRows = parseRows(rows);
+        if (pendingRows.length) {
+          status.textContent = `✓ 找到 ${pendingRows.length} 筆資料，按「載入」確認`;
+          status.style.color = 'var(--accent-dk)';
+        } else {
+          status.textContent = '⚠ 找不到可解析的資料，請確認欄位順序';
+          status.style.color = 'var(--low)';
+        }
+      } catch(err) {
+        status.textContent = '讀取失敗，請確認檔案格式';
+        status.style.color = 'var(--low)';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  /* ── Unified load ── */
+  function doLoad() {
+    const isFile = document.getElementById('tabFile').style.display !== 'none';
+    if (isFile) {
+      if (!pendingRows.length) { alert('請先選擇檔案'); return; }
+      const startIdx = items.length;
+      items = [...items, ...pendingRows];
+      closeOverlay();
+      render();
+      autoTranslate(startIdx);
+    } else {
+      parseAndLoad();
+    }
+  }
+
+  /* ── Parse rows (shared) ── */
+  function parseRows(rows) {
+    const parsed = [];
+    for (const row of rows) {
+      const cols = row.map(c => String(c ?? '').trim()).filter((_, i) => i < 10);
+      const firstNum = cols.findIndex(c => c !== '' && !isNaN(parseFloat(c.replace(/,/g, ''))));
+      if (firstNum < 0) continue;
+      const name = cols.slice(0, firstNum).join(' ').trim();
+      const nums = cols.slice(firstNum)
+        .map(c => parseFloat(String(c).replace(/,/g, '')))
+        .filter(n => !isNaN(n) && n > 0);
+      if (!nums.length || !name) continue;
+      parsed.push({ jpName: name, zhName: '', msrp: nums[0], purchase: nums[1] ?? nums[0], customPrice: null });
+    }
+    return parsed;
+  }
+
+  /* ── Parse text ── */
+  function parseAndLoad() {
+    const raw = document.getElementById('pasteArea').value.trim();
+    if (!raw) return;
+
+    const rows = raw.split('\n').map(l => l.trim().split(/\t/));
+    const parsed = parseRows(rows);
+
+    if (!parsed.length) {
+      alert('無法解析，請確認格式：品名（Tab）日本零售價（Tab）批價');
+      return;
+    }
+
+    const startIdx = items.length;
+    items = [...items, ...parsed];
+    closeOverlay();
+    render();
+    autoTranslate(startIdx); // 自動翻譯新加入的品名
+  }
+
+  /* ── IP 品牌前綴 ── */
+  function getIpPrefix() {
+    const brand = document.getElementById('ipBrand').value.trim();
+    return brand ? `【${brand}】` : '';
+  }
+
+  function onIpInput() {
+    const hasItems = items.length > 0;
+    document.getElementById('ipApplyBtn').style.display = hasItems ? 'inline-block' : 'none';
+  }
+
+  function applyIpToAll() {
+    const prefix = getIpPrefix();
+    items.forEach((item, i) => {
+      // 先移除舊的 IP 前綴（格式：【...】）再套入新的
+      const stripped = item.zhName.replace(/^【[^】]*】/, '');
+      item.zhName = prefix + stripped;
+    });
+    // 更新畫面上的輸入框
+    document.querySelectorAll('#tbody tr').forEach((tr, i) => {
+      const input = tr.querySelectorAll('.ci')[1];
+      if (input && items[i]) input.value = items[i].zhName;
+    });
+  }
+
+  /* ── 自動翻譯 ── */
+  async function autoTranslate(fromIdx) {
+    const prefix = getIpPrefix();
+    for (let i = fromIdx; i < items.length; i++) {
+      const name = items[i].jpName;
+      if (!name || items[i].zhName) continue;
+      try {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(name)}&langpair=ja|zh-TW`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const translated = json?.responseData?.translatedText;
+        if (translated && json.responseStatus === 200) {
+          items[i].zhName = prefix + translated;
+          const inputs = document.querySelectorAll(`#tbody tr:nth-child(${i + 1}) .ci`);
+          if (inputs[1]) inputs[1].value = items[i].zhName;
+        }
+      } catch (e) { /* 靜默略過 */ }
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
+
+  /* ── Settings ── */
+  function S() {
+    return {
+      cr:  parseFloat(document.getElementById('currentRate').value)  || 0.22,
+      pr:  parseFloat(document.getElementById('pricingRate').value)  || 0.32,
+      fee: parseFloat(document.getElementById('importFee').value)    || 25,
+      tm:  parseFloat(document.getElementById('targetMargin').value) || 50,
+      rt:  parseInt(document.getElementById('roundTo').value)        || 10,
+    };
+  }
+
+  function calc(item, s) {
+    const cost = item.purchase * s.cr * (1 + s.fee / 100);
+    let price;
+
+    if (mode === 'rate') {
+      // 模式一：匯率定價 → 售價由匯率決定
+      price = item.customPrice != null ? item.customPrice : roundN(item.msrp * s.pr, s.rt);
+    } else {
+      // 模式二：毛利率定價 → 售價由目標毛利率反推
+      price = item.customPrice != null ? item.customPrice : roundN(cost / (1 - s.tm / 100), s.rt);
+    }
+
+    const margin     = price > 0 ? (price - cost) / price * 100 : 0;
+    // 參考值（另一個模式的反推結果）
+    const refMargin  = price > 0 ? margin : 0;                      // mode=rate 時顯示毛利率
+    const refRate    = item.msrp > 0 ? price / item.msrp : 0;       // mode=margin 時顯示隱含匯率
+
+    return { cost, price, margin, refMargin, refRate, profit: price - cost };
+  }
+  function roundN(n, u) { return Math.round(n / u) * u; }
+
+  function pc(m) { return m >= 45 ? 'mpill-good' : m >= 35 ? 'mpill-mid' : 'mpill-low'; }
+  function pl(m) { return m >= 45 ? '優良' : m >= 35 ? '普通' : '偏低'; }
+  function bc(m) { return m >= 45 ? 'var(--good)' : m >= 35 ? 'var(--mid)' : 'var(--low)'; }
+
+  /* ── Render ── */
+  function render() {
+    const s = S();
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+
+    items.forEach((item, i) => {
+      const { cost, price, margin, refMargin, refRate } = calc(item, s);
+      const bw = Math.min(margin, 65) / 65 * 100;
+
+      // 參考欄：匯率模式顯示毛利率，毛利率模式顯示隱含匯率
+      const refCell = mode === 'rate'
+        ? `<span class="mpill ${pc(refMargin)}" id="mg-${i}">
+             ${refMargin.toFixed(1)}%
+             <span class="mbar"><span class="mbar-fill" style="width:${Math.min(refMargin,65)/65*100}%;background:${bc(refMargin)}"></span></span>
+             ${pl(refMargin)}
+           </span>`
+        : `<span style="font-size:0.82rem;color:var(--muted);font-variant-numeric:tabular-nums" id="mg-${i}">
+             ${refRate.toFixed(2)}
+           </span>`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="row-num">${i + 1}</td>
+        <td>
+          <input class="ci" type="text" value="${esc(item.jpName)}"
+            onchange="items[${i}].jpName=this.value">
+          <button class="tr-btn" onclick="openTr(${i})">🌐 翻譯</button>
+        </td>
+        <td>
+          <input class="ci" type="text" value="${esc(item.zhName)}"
+            placeholder="點此輸入中文品名"
+            onchange="items[${i}].zhName=this.value">
+        </td>
+        <td class="right" style="font-variant-numeric:tabular-nums;color:var(--sub)">
+          ${fmt(item.msrp)}
+        </td>
+        <td class="right" style="font-variant-numeric:tabular-nums;font-weight:600">
+          ${fmt(item.purchase)}
+        </td>
+        <td class="right col-calc" style="font-variant-numeric:tabular-nums;color:var(--sub)">
+          NT$&nbsp;${Math.round(cost).toLocaleString()}
+        </td>
+        <td class="right col-calc">
+          <input class="price-ci" type="number" value="${price}" step="10"
+            oninput="setPx(${i},this.value)">
+        </td>
+        <td class="right col-calc">${refCell}</td>
+        <td class="center">
+          <button class="del-btn" onclick="del(${i})">✕</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    const hasData = items.length > 0;
+    document.getElementById('emptyState').style.display = hasData ? 'none' : 'flex';
+    document.getElementById('mainTable').style.display = hasData ? 'table' : 'none';
+    document.getElementById('exportBtn').style.display = hasData ? 'inline-block' : 'none';
+    updateStats(s);
+  }
+
+  function setPx(i, val) {
+    items[i].customPrice = parseFloat(val) || 0;
+    const s = S();
+    const { margin, refMargin, refRate } = calc(items[i], s);
+    const el = document.getElementById(`mg-${i}`);
+    if (el) {
+      if (mode === 'rate') {
+        el.className = `mpill ${pc(refMargin)}`;
+        el.innerHTML = `${refMargin.toFixed(1)}% <span class="mbar"><span class="mbar-fill" style="width:${Math.min(refMargin,65)/65*100}%;background:${bc(refMargin)}"></span></span> ${pl(refMargin)}`;
+      } else {
+        el.className = '';
+        el.style.cssText = 'font-size:0.82rem;color:var(--muted);font-variant-numeric:tabular-nums';
+        el.textContent = refRate.toFixed(2);
+      }
+    }
+    updateStats(s);
+  }
+
+  function updateStats(s) {
+    let tc = 0, tr = 0;
+    items.forEach(it => { const r = calc(it, s); tc += r.cost; tr += r.price; });
+    const avg = tr > 0 ? (tr - tc) / tr * 100 : 0;
+    // 統計列已移除
+  }
+
+  function recalcAll() { if (items.length) render(); }
+
+  function del(i) {
+    items.splice(i, 1);
+    render();
+  }
+
+  function clearAll() {
+    if (items.length && !confirm('確定要清除所有資料嗎？')) return;
+    items = [];
+    document.getElementById('pasteArea').value = '';
+    render();
+  }
+
+  function openTr(i) {
+    window.open(`https://translate.google.com/?sl=ja&tl=zh-TW&text=${encodeURIComponent(items[i].jpName)}`, '_blank');
+  }
+
+  /* ── Export ── */
+  function exportCSV() {
+    const s = S();
+    const BOM = '﻿';
+    const refLabel = mode === 'rate' ? '毛利率(%)' : '隱含匯率';
+    const hdr = ['日文品名','中文品名','日本零售價(JPY)','批價(JPY)','成本(TWD)','建議售價(TWD)', refLabel,'毛利(TWD)'];
+    const rows = items.map(it => {
+      const { cost, price, margin, refMargin, refRate, profit } = calc(it, s);
+      const refVal = mode === 'rate' ? margin.toFixed(1) : refRate.toFixed(2);
+      return [it.jpName, it.zhName, it.msrp, it.purchase,
+              Math.round(cost), price, refVal, Math.round(profit)]
+        .map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+    });
+    const csv = BOM + [hdr.join(','), ...rows].join('\n');
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })),
+      download: `定價試算_${new Date().toISOString().slice(0,10)}.csv`,
+    });
+    a.click();
+  }
+
+  function fmt(n) { return n ? Number(n).toLocaleString() : '—'; }
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
