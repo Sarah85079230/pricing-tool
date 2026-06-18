@@ -419,9 +419,9 @@
     <!-- 貼上模式 -->
     <div id="tabPaste">
       <div class="overlay-hint">
-        欄位順序：<strong>品名（日文）　日本零售價　批價</strong><br>
-        每列一筆，從 Excel / Google 試算表直接複製貼上即可<br>
-        <span style="opacity:0.7">有表頭列也沒關係，自動略過</span>
+        欄位順序：<strong>品名　零售價　批價</strong><br>
+        從試算表複製貼上，或直接手動輸入<br>
+        <span style="opacity:0.7">用 Tab 或兩個以上空格分隔；有表頭列自動略過</span>
       </div>
       <textarea class="paste-ta" id="pasteArea"
         placeholder="アクリルスタンド&#9;1800&#9;990&#10;ポーチ&#9;580&#9;319"></textarea>
@@ -560,11 +560,20 @@
     const raw = document.getElementById('pasteArea').value.trim();
     if (!raw) return;
 
-    const rows = raw.split('\n').map(l => l.trim().split(/\t/));
+    // 支援 Tab 或多個空格分隔
+    const rows = raw.split('\n').map(l => {
+      const t = l.trim();
+      if (!t) return [];
+      if (t.includes('\t')) return t.split(/\t/);
+      // 空格分隔：品名可能含空格，數字在後，用「最後兩個數字區塊」切割
+      const m = t.match(/^(.+?)\s{2,}([\d.]+)\s+([\d.]+)\s*$/);
+      if (m) return [m[1].trim(), m[2], m[3]];
+      return t.split(/\s+/);
+    });
     const parsed = parseRows(rows);
 
     if (!parsed.length) {
-      alert('無法解析，請確認格式：品名（Tab）日本零售價（Tab）批價');
+      alert('無法解析，請確認格式：品名  零售價  批價（用 Tab 或兩個以上空格分隔）');
       return;
     }
 
